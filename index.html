@@ -423,7 +423,14 @@
   .detail-panel .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .detail-actions { display: flex; gap: 6px; }
 </style>
+
+<style>
+/* 手机窄屏提示条（hw19 部署版）：大屏看板在小屏只提醒不强改布局 */
+#mobile-hint{display:none;background:#FFC107;color:#1A1D21;font-size:14px;padding:8px 12px;text-align:center;font-weight:bold;position:sticky;top:0;z-index:9999}
+@media (max-width: 768px){#mobile-hint{display:block}}
+</style>
 </head>
+<div id="mobile-hint">📱 本看板为车间大屏/电脑设计，建议电脑打开获得最佳体验（手机可横屏浏览）</div>
 <body>
 
 <div id="tooltip" class="tooltip"></div>
