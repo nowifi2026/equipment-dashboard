@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>注塑设备运行效率看板（v3 主题包版）</title>
+<style>
+  /* ===== 全局样式：深色科技风看板，纯原生零依赖 ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* ===== v3 主题包：八类设计变量（深夜蓝=原版默认） ===== */
+  :root {
+    --bg-页面: var(--bg-页面); --bg-面板: var(--bg-面板); --bg-卡片: var(--bg-卡片); --边框: var(--边框);
+    --文字-正文: var(--文字-正文); --文字-强调: var(--文字-强调); --文字-辅助: var(--文字-辅助); --文字-弱: var(--文字-弱);
+    --主色: var(--主色); --状态红: var(--状态红); --状态黄: var(--状态黄); --状态绿: var(--状态绿);
+    --图表紫: var(--图表紫); --图表橙: var(--图表橙); --图表青: var(--图表青); --bg-面板亮: var(--bg-面板亮); --边框亮: var(--边框亮); --主色亮: var(--主色亮);
+    --字号-KPI: 26px; --字号-正文: 14px; --字号-标题: 20px;
+    --页面缩放: 1;
+  }
+  /* 大屏红：车间 3~5 米观看——近黑底+高饱和状态色+整体 zoom 放大 */
+  html[data-主题="大屏"] {
+    --bg-页面: #101010; --bg-面板: #1a1a1a; --bg-卡片: #212121; --边框: #3d3d3d;
+    --文字-正文: #f5f5f5; --文字-强调: #ffffff; --文字-辅助: #bdbdbd; --文字-弱: #9e9e9e;
+    --主色: #29b6f6; --状态红: #ff1744; --状态黄: #ffea00; --状态绿: #00e676;
+    --字号-KPI: 56px; --字号-正文: 22px; --字号-标题: 40px; --bg-面板亮: #262626; --边框亮: #4d4d4d; --主色亮: #4fc3f7;
+    --页面缩放: 1.35;
+  }
+  /* 晨会亮：投影仪偏灰——浅底深字+深版状态色抗偏色 */
+  html[data-主题="晨会"] {
+    --bg-页面: #f5f7fa; --bg-面板: #ffffff; --bg-卡片: #eef2f7; --边框: #cfd8e3;
+    --文字-正文: #1a2b3c; --文字-强调: #0d47a1; --文字-辅助: #455a64; --文字-弱: #607d8b;
+    --主色: #1565c0; --状态红: #c62828; --状态黄: #b8860b; --状态绿: #2e7d32;
+    --图表紫: #6a1b9a; --图表橙: #d84315; --图表青: #00695c;
+    --字号-KPI: 32px; --字号-正文: 15px; --字号-标题: 24px; --bg-面板亮: #ffffff; --边框亮: #dde4ec; --主色亮: #1e88e5;
+    --页面缩放: 1;
+  }
+  body { zoom: var(--页面缩放); }
+  /* 主题切换按钮组 */
+  .主题切换 { display: flex; gap: 6px; }
+  .主题切换 button {
+    background: var(--bg-卡片); border: 1px solid var(--边框); color: var(--文字-强调);
+    padding: 4px 10px; border-radius: 12px; font-size: 12px; cursor: pointer;
+  }
+  .主题切换 button.当前 { background: var(--主色); border-color: var(--主色); color: #fff; }
+
+  body {
+    font-family: "Microsoft YaHei", "微软雅黑", -apple-system, sans-serif;
+    background: var(--bg-页面);
+    color: var(--文字-正文);
+    font-size: var(--字号-正文);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ===== 顶部标题栏 ===== */
+  .topbar {
+    background: linear-gradient(135deg, var(--bg-面板) 0%, var(--bg-卡片) 100%);
+    border-bottom: 1px solid var(--边框);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .topbar h1 { font-size: var(--字号-标题); font-weight: 600; letter-spacing: 1px; }
+  .topbar h1 .icon { color: var(--主色); margin-right: 6px; }
+  .topbar .meta { font-size: 12px; color: var(--文字-辅助); display: flex; gap: 18px; flex-wrap: wrap; }
+  .topbar .meta b { color: var(--文字-强调); font-weight: 500; }
+
+  /* ===== KPI 卡片行 ===== */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    padding: 14px 16px 4px;
+  }
+  .kpi-card {
+    background: var(--bg-卡片);
+    border: 1px solid var(--边框);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--主色);
+  }
+  .kpi-card.k-oee::before { background: var(--图表紫); }
+  .kpi-card.k-avail::before { background: var(--图表青); }
+  .kpi-card.k-fault::before { background: var(--状态红); }
+  .kpi-card.k-output::before { background: var(--状态黄); }
+  .kpi-card.k-run::before { background: var(--状态绿); }
+  .kpi-card .k-label { font-size: 12px; color: var(--文字-辅助); margin-bottom: 6px; }
+  .kpi-card .k-value { font-size: var(--字号-KPI); font-weight: 700; }
+  .kpi-card .k-sub { font-size: 11px; color: var(--文字-弱); margin-top: 2px; }
+  .kpi-card.clickable { cursor: pointer; transition: transform .15s, border-color .15s; }
+  .kpi-card.clickable:hover { transform: translateY(-2px); border-color: var(--主色); }
+
+  /* ===== 筛选栏 ===== */
+  .filter-bar {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  .filter-group .fg-label { font-size: 12px; color: var(--文字-辅助); margin-right: 4px; }
+  .filter-btn {
+    background: var(--bg-卡片);
+    border: 1px solid var(--边框);
+    color: var(--文字-强调);
+    padding: 5px 14px;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .filter-btn:hover { border-color: var(--主色); }
+  .filter-btn.active { background: var(--主色); border-color: var(--主色); color: #fff; }
+  .filter-btn .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .filter-select {
+    background: var(--bg-卡片);
+    border: 1px solid var(--边框);
+    color: var(--文字-强调);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* ===== 主看板网格布局 ===== */
+  .dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "grid detail"
+      "bar   pie"
+      "table table";
+    gap: 14px;
+    padding: 4px 16px 20px;
+  }
+  .panel {
+    background: var(--bg-面板);
+    border: 1px solid var(--边框);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .panel-title {
+    font-size: var(--字号-正文);
+    font-weight: 600;
+    color: var(--文字-强调);
+    margin-bottom: 10px;
+    padding-left: 8px;
+    border-left: 3px solid var(--主色);
+  }
+  .grid-panel { grid-area: grid; }
+  .detail-panel { grid-area: detail; }
+  .bar-panel { grid-area: bar; }
+  .pie-panel { grid-area: pie; }
+  .table-panel { grid-area: table; }
+
+  /* ===== 设备状态网格 ===== */
+  .device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 10px;
+    max-height: 330px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .device-card {
+    background: var(--bg-卡片);
+    border: 1px solid var(--边框);
+    border-left: 4px solid var(--文字-弱);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: transform .12s, border-color .12s, box-shadow .12s;
+  }
+  .device-card:hover { transform: translateY(-2px); border-color: var(--主色); }
+  .device-card.selected { border-color: #fff; box-shadow: 0 0 0 2px var(--主色) inset; }
+  .device-card.status-running { border-left-color: var(--状态绿); }
+  .device-card.status-idle { border-left-color: var(--状态黄); }
+  .device-card.status-fault { border-left-color: var(--状态红); }
+  .device-card.status-maintenance { border-left-color: var(--文字-弱); }
+  .dc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .dc-name { font-size: 13px; font-weight: 600; }
+  .dc-status { font-size: 11px; padding: 1px 7px; border-radius: 10px; }
+  .dc-model { font-size: 11px; color: var(--文字-弱); margin-bottom: 6px; }
+  .dc-oee { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .dc-oee span { font-size: 11px; color: var(--文字-弱); font-weight: 400; margin-left: 4px; }
+  .dc-meta { font-size: 11px; color: var(--文字-辅助); margin-top: 4px; }
+
+  /* ===== 详情面板 ===== */
+  .detail-panel { max-height: 330px; }
+  .detail-content { overflow-y: auto; flex: 1; padding-right: 4px; }
+  .metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .metric-box {
+    background: var(--bg-卡片);
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+  }
+  .metric-box .mb-label { font-size: 11px; color: var(--文字-辅助); }
+  .metric-box .mb-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .detail-info { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 12px; margin-bottom: 10px; }
+  .detail-info .di-item { color: var(--文字-辅助); }
+  .detail-info .di-item b { color: var(--文字-强调); font-weight: 500; margin-left: 4px; }
+  .sub-title { font-size: 12px; color: var(--文字-辅助); margin: 8px 0 6px; }
+  .fault-list { font-size: 12px; }
+  .fault-item { background: var(--bg-卡片); border-left: 3px solid var(--状态红); padding: 5px 8px; margin-bottom: 5px; border-radius: 3px; }
+  .fault-item .fi-time { color: var(--状态红); font-weight: 600; margin-right: 6px; }
+  .fault-item .fi-dur { float: right; color: var(--状态黄); }
+  .fault-item .fi-desc { color: var(--文字-强调); display: block; font-size: 11px; }
+
+  /* ===== 图表区通用 ===== */
+  .chart-wrap { flex: 1; overflow: auto; }
+  .bar-chart { max-height: 280px; overflow-y: auto; }
+  .bar-chart svg { display: block; }
+  .bar-rect { transition: opacity .15s; }
+  .bar-rect:hover { opacity: .8; }
+
+  .pie-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .pie-legend { font-size: 12px; flex: 1; min-width: 120px; }
+  .legend-item { display: flex; align-items: center; padding: 3px 0; color: var(--文字-强调); }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  .legend-item b { margin-left: auto; color: var(--状态黄); }
+
+  /* ===== 明细表 ===== */
+  .table-wrap { max-height: 320px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { position: sticky; top: 0; background: var(--bg-卡片); z-index: 1; }
+  th {
+    text-align: left;
+    padding: 8px 10px;
+    color: var(--文字-辅助);
+    font-weight: 500;
+    border-bottom: 1px solid var(--边框);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  th:hover { color: var(--文字-强调); }
+  th .sort-arrow { color: var(--主色); margin-left: 2px; }
+  td { padding: 7px 10px; border-bottom: 1px solid #22304a; color: var(--文字-强调); white-space: nowrap; }
+  tr { cursor: pointer; }
+  tbody tr:hover { background: var(--bg-卡片); }
+  tbody tr.selected { background: var(--bg-面板亮); }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+  .tag-running { background: rgba(46,204,113,.15); color: var(--状态绿); }
+  .tag-idle { background: rgba(241,196,15,.15); color: var(--状态黄); }
+  .tag-fault { background: rgba(231,76,60,.15); color: var(--状态红); }
+  .tag-maintenance { background: rgba(149,165,166,.15); color: var(--文字-弱); }
+
+  /* ===== tooltip ===== */
+  .tooltip {
+    position: fixed;
+    background: rgba(15,27,45,.96);
+    border: 1px solid var(--主色);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--文字-正文);
+    pointer-events: none;
+    display: none;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+    max-width: 240px;
+    line-height: 1.6;
+  }
+  .tooltip b { color: var(--主色); }
+
+  .empty { color: var(--文字-弱); font-size: 12px; padding: 20px; text-align: center; }
+
+  /* ===== 滚动条美化 ===== */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-面板); }
+  ::-webkit-scrollbar-thumb { background: var(--边框); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--边框亮); }
+
+  /* ===== 响应式：窄屏堆叠 ===== */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .dashboard { grid-template-columns: 1fr; grid-template-areas: "grid" "detail" "bar" "pie" "table"; }
+  }
+
+  /* ===== 数据工具栏（导入/导出/车间信息/新增/重置） ===== */
+  .data-toolbar {
+    padding: 0 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .data-toolbar .dt-label { font-size: 12px; color: var(--文字-辅助); margin-right: 2px; }
+  .btn {
+    background: var(--bg-卡片);
+    border: 1px solid var(--边框);
+    color: var(--文字-强调);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+  }
+  .btn:hover { border-color: var(--主色); color: #fff; }
+  .btn-primary { background: var(--主色); border-color: var(--主色); color: #fff; }
+  .btn-primary:hover { background: var(--主色亮); }
+  .btn-danger { border-color: var(--状态红); color: var(--状态红); }
+  .btn-danger:hover { background: var(--状态红); color: #fff; }
+  .btn-ghost { background: transparent; }
+  .btn-sm { padding: 3px 10px; font-size: 11px; }
+
+  /* 导出下拉菜单 */
+  .export-wrap { position: relative; }
+  .export-menu {
+    position: absolute; top: 100%; left: 0; margin-top: 4px;
+    background: var(--bg-面板); border: 1px solid var(--边框); border-radius: 6px;
+    padding: 4px; display: none; z-index: 50; min-width: 170px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .export-menu.open { display: block; }
+  .export-menu button {
+    display: block; width: 100%; text-align: left;
+    background: transparent; border: none; color: var(--文字-强调);
+    padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 4px; font-family: inherit;
+  }
+  .export-menu button:hover { background: var(--bg-卡片); }
+
+  /* 暂存恢复提示条 */
+  .restore-bar {
+    display: none; align-items: center; gap: 12px;
+    padding: 8px 16px; background: rgba(241,196,15,.1);
+    border-bottom: 1px solid rgba(241,196,15,.3);
+    font-size: 12px; color: var(--状态黄);
+  }
+  .restore-bar.show { display: flex; }
+  .restore-bar .rb-msg { flex: 1; }
+  .restore-bar .rb-msg b { color: #fff; }
+
+  /* ===== 模态框 ===== */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .modal-mask.open { display: flex; }
+  .modal-box {
+    background: var(--bg-面板); border: 1px solid var(--边框); border-radius: 10px;
+    width: 100%; max-width: 680px; max-height: 90vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  }
+  .modal-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--边框);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-head h3 { font-size: 15px; font-weight: 600; color: var(--文字-强调); }
+  .modal-head .close {
+    background: transparent; border: none; color: var(--文字-辅助);
+    font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px;
+  }
+  .modal-head .close:hover { color: var(--状态红); }
+  .modal-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+  .modal-foot {
+    padding: 12px 18px; border-top: 1px solid var(--边框);
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .modal-foot .preview-metrics { display: flex; gap: 14px; flex-wrap: wrap; }
+  .modal-foot .pm { font-size: 12px; color: var(--文字-辅助); }
+  .modal-foot .pm b { font-size: var(--字号-正文); margin-left: 3px; }
+
+  /* ===== 表单 ===== */
+  .form-section { margin-bottom: 16px; }
+  .form-section-title {
+    font-size: 12px; color: var(--主色); margin-bottom: 8px;
+    padding-left: 8px; border-left: 3px solid var(--主色);
+  }
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+  .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .form-grid.cols-7 { grid-template-columns: repeat(7, 1fr); }
+  .fg { display: flex; flex-direction: column; gap: 3px; }
+  .fg label { font-size: 11px; color: var(--文字-辅助); }
+  .fg input, .fg select {
+    background: var(--bg-卡片); border: 1px solid var(--边框); color: var(--文字-正文);
+    padding: 6px 8px; border-radius: 5px; font-size: 13px; font-family: inherit;
+  }
+  .fg input:focus, .fg select:focus { outline: none; border-color: var(--主色); }
+  .fg input.err { border-color: var(--状态红); }
+
+  /* 故障明细编辑行 */
+  .fault-edit-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+  .fault-edit-row {
+    display: grid; grid-template-columns: 70px 110px 56px 1fr auto;
+    gap: 6px; align-items: center;
+  }
+  .fault-edit-row input {
+    background: var(--bg-卡片); border: 1px solid var(--边框); color: var(--文字-正文);
+    padding: 5px 6px; border-radius: 4px; font-size: 12px; font-family: inherit;
+  }
+  .fault-edit-row .del-row {
+    background: transparent; border: 1px solid var(--状态红); color: var(--状态红);
+    border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;
+  }
+  .fault-edit-row .del-row:hover { background: var(--状态红); color: #fff; }
+  .fault-edit-head {
+    display: grid; grid-template-columns: 70px 110px 56px 1fr auto;
+    gap: 6px; font-size: 10px; color: var(--文字-弱); margin-bottom: 4px;
+  }
+
+  /* 详情面板标题：标题 + 操作按钮 */
+  .detail-panel .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .detail-actions { display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+
+<div id="tooltip" class="tooltip"></div>
+
+<!-- 顶部标题栏 -->
+<header class="topbar">
+  <h1><span class="icon">⚙</span>注塑设备运行效率看板</h1>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="主题切换">
+        <button data-t="" onclick="切主题('')">深夜蓝</button>
+        <button data-t="大屏" onclick="切主题('大屏')">大屏红</button>
+        <button data-t="晨会" onclick="切主题('晨会')">晨会亮</button>
+      </div>
+      <div class="meta" id="topMeta"></div>
+    </div>
+</header>
+
+<!-- KPI 卡片行 -->
+<section class="kpi-row" id="kpiRow"></section>
+
+<!-- 筛选栏 -->
+<section class="filter-bar" id="filterBar"></section>
+
+<!-- 暂存恢复提示条（检测到未保存修改时显示） -->
+<div class="restore-bar" id="restoreBar">
+  <span class="rb-msg" id="restoreMsg"></span>
+  <button class="btn btn-sm btn-primary" id="restoreYes">恢复</button>
+  <button class="btn btn-sm btn-ghost" id="restoreNo">丢弃</button>
+</div>
+
+<!-- 数据工具栏：导入 / 导出 / 车间信息 / 新增设备 / 重置 -->
+<section class="data-toolbar" id="dataToolbar">
+  <span class="dt-label">数据操作</span>
+  <button class="btn" id="btnImport" title="从 .js / .json / .xlsx 文件导入数据">📥 导入</button>
+  <div class="export-wrap">
+    <button class="btn" id="btnExport" title="导出当前数据到文件">📤 导出 ▾</button>
+    <div class="export-menu" id="exportMenu">
+      <button id="expJs">导出为 .js（覆盖数据文件用）</button>
+      <button id="expJson">导出为 .json（备份用）</button>
+      <button id="expXlsx">导出为 .xlsx（Excel 表用）</button>
+    </div>
+  </div>
+  <button class="btn" id="btnMeta" title="编辑车间名称 / 日期 / 班次">✏️ 车间信息</button>
+  <button class="btn btn-primary" id="btnAdd" title="新增一台设备">➕ 新增设备</button>
+  <button class="btn btn-danger" id="btnReset" title="恢复为原始数据">🔄 重置</button>
+  <input type="file" id="fileInput" accept=".js,.json,.xlsx" style="display:none">
+</section>
+
+<!-- 主看板 -->
+<main class="dashboard">
+  <div class="panel grid-panel">
+    <div class="panel-title">设备状态（点击查看详情）</div>
+    <div class="device-grid" id="deviceGrid"></div>
+  </div>
+
+  <div class="panel detail-panel">
+    <div class="panel-title" id="detailTitle">设备详情</div>
+    <div class="detail-content" id="detailContent"></div>
+  </div>
+
+  <div class="panel bar-panel">
+    <div class="panel-title">OEE 对比（点击选中设备）</div>
+    <div class="bar-chart" id="oeeBar"></div>
+  </div>
+
+  <div class="panel pie-panel">
+    <div class="panel-title">故障类型分布（按故障时长）</div>
+    <div class="chart-wrap" id="faultPie"></div>
+  </div>
+
+  <div class="panel table-panel">
+    <div class="panel-title">设备明细（点击表头排序，点击行选中）</div>
+    <div class="table-wrap">
+      <table id="deviceTable"></table>
+    </div>
+  </div>
+</main>
+
+<!-- 通用模态框（编辑设备 / 新增设备 / 车间信息） -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle">编辑</h3>
+      <button class="close" id="modalClose">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <div class="preview-metrics" id="previewMetrics"></div>
+      <div>
+        <button class="btn btn-ghost" id="modalCancel">取消</button>
+        <button class="btn btn-primary" id="modalSave">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 数据文件：与本文件同目录，离线双击即可加载 -->
+<script src="注塑设备-看板数据.js"></script>
+<!-- Excel 解析库（本地，离线可用），用于导入 .xlsx 数据 -->
+<script src="xlsx.full.min.js"></script>
+<script>
+  // ===== 主题色缓存：SVG 图表色跟随主题（切换时刷新缓存并重绘，治「图表不跟主题走」） =====
+  var TH = {};
+  function 刷新主题色() {
+    var cs = getComputedStyle(document.documentElement);
+    function v(名) { return cs.getPropertyValue(名).trim(); }
+    TH.红 = v('--状态红'); TH.黄 = v('--状态黄'); TH.绿 = v('--状态绿'); TH.主色 = v('--主色');
+    TH.辅字 = v('--文字-辅助'); TH.弱字 = v('--文字-弱'); TH.强字 = v('--文字-强调'); TH.面板底 = v('--bg-面板');
+    TH.紫 = v('--图表紫'); TH.橙 = v('--图表橙'); TH.青 = v('--图表青');
+    TH.页面底 = v('--bg-页面'); TH.正文 = v('--文字-正文');
+  }
+  // ===== 主题切换：改 data-主题 → 刷新图表色 → 重绘 → localStorage 记忆 =====
+  function 切主题(名) {
+    document.documentElement.setAttribute('data-主题', 名);
+    localStorage.setItem('看板主题', 名);
+    刷新主题色();
+    renderAll();
+    var bs = document.querySelectorAll('.主题切换 button');
+    for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('当前', bs[i].getAttribute('data-t') === 名);
+  }
+  (function 恢复主题() {
+    var 名 = localStorage.getItem('看板主题');
+    if (名 === '大屏' || 名 === '晨会') document.documentElement.setAttribute('data-主题', 名);
+  })();
+</script>
+<script>
+/* ===== 看板渲染逻辑（纯原生 JS，零依赖） ===== */
+  刷新主题色(); // 首绘前先载入当前主题色（SVG 图表用；坑实录：首绘没刷 → TH 空 → fill 空 → 图表全黑）
+(function () {
+  "use strict";
+
+  // 数据加载兜底：若数据文件缺失，给出明确提示而不是空白
+  var DATA = window.BOARD_DATA;
+  if (!DATA || !DATA.devices) {
+    document.body.innerHTML =
+      '<div style="color:' + TH.红 + ';padding:40px;font-size:16px;line-height:2;">' +
+      '⚠ 数据加载失败：未找到 BOARD_DATA。<br>' +
+      '请确认 <b>注塑设备-看板数据.js</b> 与本 HTML 文件在<b>同一目录</b>，且通过双击或本地方式打开。<br>' +
+      '（若浏览器拦截本地文件加载，可改用 Edge/Chrome 直接双击打开 HTML。）<br>' +
+      '<span style="font-size:13px;color:' + TH.辅字 + '">完整文件清单：① 本 HTML ② 注塑设备-看板数据.js（必需）｜③ xlsx.full.min.js（导入/导出 Excel 时必需）</span></div>';
+    return;
+  }
+
+  // ===== 状态映射 =====
+  var STATUS = {
+    running: { label: "运行", color: TH.绿, bg: "rgba(46,204,113,.15)", tag: "tag-running" },
+    idle: { label: "待机", color: TH.黄, bg: "rgba(241,196,15,.15)", tag: "tag-idle" },
+    fault: { label: "故障", color: TH.红, bg: "rgba(231,76,60,.15)", tag: "tag-fault" },
+    maintenance: { label: "维护", color: TH.弱字, bg: "rgba(149,165,166,.15)", tag: "tag-maintenance" }
+  };
+
+  // ===== 工具函数 =====
+  // 计算单设备指标：稼动率 / 性能率 / 良率 / OEE
+  function metrics(d) {
+    var a = d.planTime > 0 ? d.runTime / d.planTime : 0;            // 稼动率 Availability
+    var p = d.theoryOutput > 0 ? d.actualOutput / d.theoryOutput : 0; // 性能率 Performance
+    var q = d.actualOutput > 0 ? d.qualifiedOutput / d.actualOutput : 0; // 良率 Quality
+    return { a: a, p: p, q: q, oee: a * p * q };
+  }
+  function pct(x) { return (x * 100).toFixed(1) + "%"; }
+  // OEE 颜色档：≥85% 绿 / 70~85% 黄 / <70% 红
+  function oeeColor(o) {
+    if (o >= 0.85) return TH.绿;
+    if (o >= 0.70) return TH.黄;
+    return TH.红;
+  }
+
+  // 全厂汇总指标
+  function summary() {
+    var plan = 0, run = 0, theory = 0, actual = 0, qual = 0, faultT = 0, running = 0;
+    DATA.devices.forEach(function (d) {
+      plan += d.planTime; run += d.runTime;
+      theory += d.theoryOutput; actual += d.actualOutput; qual += d.qualifiedOutput;
+      faultT += d.faultTime;
+      if (d.status === "running") running++;
+    });
+    var a = plan > 0 ? run / plan : 0;
+    var p = theory > 0 ? actual / theory : 0;
+    var q = actual > 0 ? qual / actual : 0;
+    return {
+      a: a, p: p, q: q, oee: a * p * q,
+      faultRate: plan > 0 ? faultT / plan : 0,
+      output: actual, running: running, total: DATA.devices.length
+    };
+  }
+
+  // 取所有设备类型（用于筛选下拉）
+  function types() {
+    var set = {};
+    DATA.devices.forEach(function (d) { set[d.type] = 1; });
+    return Object.keys(set);
+  }
+  // 取所有小部门（用于筛选下拉，缺失归"未分配"）
+  function workshops() {
+    var set = {};
+    DATA.devices.forEach(function (d) { set[d.workshop || "未分配"] = 1; });
+    return Object.keys(set);
+  }
+
+  // ===== 交互状态 =====
+  var state = {
+    selectedId: null,   // 当前选中设备
+    filterStatus: "all",
+    filterType: "all",
+    filterWorkshop: "all",
+    sortKey: "oee",
+    sortDir: "desc"
+  };
+
+  // 当前筛选结果
+  function filtered() {
+    return DATA.devices.filter(function (d) {
+      if (state.filterStatus !== "all" && d.status !== state.filterStatus) return false;
+      if (state.filterType !== "all" && d.type !== state.filterType) return false;
+      if (state.filterWorkshop !== "all" && (d.workshop || "未分配") !== state.filterWorkshop) return false;
+      return true;
+    });
+  }
+
+  // 选中设备（联动网格 / 详情 / 柱状图 / 表格）
+  function selectDevice(id) {
+    state.selectedId = id;
+    renderGrid();
+    renderDetail();
+    renderBar();
+    renderTable();
+  }
+
+  // ===== tooltip =====
+  var tooltip = document.getElementById("tooltip");
+  function showTip(html, e) {
+    tooltip.innerHTML = html;
+    tooltip.style.display = "block";
+    moveTip(e);
+  }
+  function moveTip(e) {
+    var x = e.clientX + 14, y = e.clientY + 14;
+    // 防溢出右边界
+    if (x + 240 > window.innerWidth) x = e.clientX - 250;
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+  }
+  function hideTip() { tooltip.style.display = "none"; }
+
+  // ===== 渲染：顶部元信息 =====
+  function renderTopMeta() {
+    var m = DATA.meta;
+    document.getElementById("topMeta").innerHTML =
+      "<span>总车间 <b>" + m.factory + "</b></span>" +
+      "<span>日期 <b>" + m.date + "</b></span>" +
+      "<span>班次 <b>" + m.shift + "</b></span>" +
+      "<span>更新 <b>" + m.updateTime + "</b></span>";
+  }
+
+  // ===== 渲染：KPI 卡片 =====
+  function renderKPI() {
+    var s = summary();
+    var cards = [
+      { cls: "k-oee", label: "全厂 OEE", value: pct(s.oee), sub: "稼动×性能×良率", click: null },
+      { cls: "k-avail", label: "平均稼动率", value: pct(s.a), sub: "运行时间 / 计划时间", click: null },
+      { cls: "k-fault", label: "故障率", value: pct(s.faultRate), sub: "故障时长 / 计划时间", click: null },
+      { cls: "k-output", label: "总产量", value: s.output.toLocaleString() + " 件", sub: "实际产量合计", click: null },
+      { cls: "k-run clickable", label: "运行设备", value: s.running + " / " + s.total, sub: "点击筛选运行中", click: "running" }
+    ];
+    document.getElementById("kpiRow").innerHTML = cards.map(function (c) {
+      return '<div class="kpi-card ' + c.cls + '"' + (c.click ? ' data-filter="' + c.click + '"' : "") + ">" +
+        '<div class="k-label">' + c.label + "</div>" +
+        '<div class="k-value" style="color:' + (c.cls.indexOf("oee") >= 0 || c.cls.indexOf("avail") >= 0 ? oeeColor(c.cls === "k-oee" ? s.oee : s.a) : TH.正文) + '">' + c.value + "</div>" +
+        '<div class="k-sub">' + c.sub + "</div>" +
+        "</div>";
+    }).join("");
+  }
+
+  // ===== 渲染：筛选栏 =====
+  function renderFilters() {
+    var statuses = [
+      { key: "all", label: "全部" },
+      { key: "running", label: "运行" },
+      { key: "idle", label: "待机" },
+      { key: "fault", label: "故障" },
+      { key: "maintenance", label: "维护" }
+    ];
+    var btns = statuses.map(function (st) {
+      var dot = STATUS[st.key] ? '<span class="dot" style="background:' + STATUS[st.key].color + '"></span>' : "";
+      return '<button class="filter-btn ' + (state.filterStatus === st.key ? "active" : "") + '" data-status="' + st.key + '">' + dot + st.label + "</button>";
+    }).join("");
+    var opts = '<option value="all"' + (state.filterType === "all" ? " selected" : "") + ">全部类型</option>" +
+      types().map(function (t) {
+        return '<option value="' + t + '"' + (state.filterType === t ? " selected" : "") + ">" + t + "</option>";
+      }).join("");
+    var wopts = '<option value="all"' + (state.filterWorkshop === "all" ? " selected" : "") + ">全部小部门</option>" +
+      workshops().map(function (w) {
+        return '<option value="' + esc(w) + '"' + (state.filterWorkshop === w ? " selected" : "") + ">" + esc(w) + "</option>";
+      }).join("");
+    document.getElementById("filterBar").innerHTML =
+      '<div class="filter-group"><span class="fg-label">状态</span>' + btns + "</div>" +
+      '<div class="filter-group"><span class="fg-label">类型</span><select class="filter-select" id="typeSelect">' + opts + "</select></div>" +
+      '<div class="filter-group"><span class="fg-label">小部门</span><select class="filter-select" id="workshopSelect">' + wopts + "</select></div>" +
+      '<div class="filter-group" style="margin-left:auto;color:' + TH.弱字 + ';font-size:12px">共 <b id="filterCount" style="color:' + TH.强字 + '">0</b> 台设备</div>';
+    document.getElementById("filterCount").textContent = filtered().length;
+  }
+
+  // ===== 渲染：设备状态网格 =====
+  function renderGrid() {
+    var list = filtered();
+    var el = document.getElementById("deviceGrid");
+    if (list.length === 0) { el.innerHTML = '<div class="empty">无符合条件的设备</div>'; return; }
+    el.innerHTML = list.map(function (d) {
+      var m = metrics(d), s = STATUS[d.status];
+      return '<div class="device-card status-' + d.status + (d.id === state.selectedId ? " selected" : "") + '" data-id="' + d.id + '">' +
+        '<div class="dc-head"><span class="dc-name">' + d.name + "</span>" +
+        '<span class="dc-status" style="color:' + s.color + ";background:" + s.bg + '">' + s.label + "</span></div>" +
+        '<div class="dc-model">' + d.id + " · " + d.model + " · " + d.type + "</div>" +
+        '<div class="dc-workshop" style="font-size:11px;color:' + TH.主色 + ';margin-bottom:4px">🏢 ' + esc(d.workshop || "未分配") + "</div>" +
+        '<div class="dc-oee" style="color:' + oeeColor(m.oee) + '">' + pct(m.oee) + "<span>OEE</span></div>" +
+        '<div class="dc-meta">产量 ' + d.actualOutput + "/" + d.theoryOutput + " 件 · 故障 " + d.faultCount + "次</div>" +
+        "</div>";
+    }).join("");
+  }
+
+  // ===== 渲染：选中设备详情 + 趋势折线 =====
+  function renderDetail() {
+    var d = DATA.devices.filter(function (x) { return x.id === state.selectedId; })[0];
+    var el = document.getElementById("detailContent");
+    if (!d) {
+      el.innerHTML = '<div class="empty">未选中设备</div>';
+      document.getElementById("detailTitle").textContent = "设备详情";
+      return;
+    }
+    var m = metrics(d), s = STATUS[d.status];
+    document.getElementById("detailTitle").innerHTML =
+      "<span>" + d.name + " · 详情</span>" +
+      '<span class="detail-actions">' +
+      '<button class="btn btn-sm" data-act="edit" data-id="' + d.id + '">✏️ 编辑</button>' +
+      '<button class="btn btn-sm btn-danger" data-act="del" data-id="' + d.id + '">🗑 删除</button>' +
+      "</span>";
+
+    var html = '<div class="metric-row">';
+    html += metricBox("稼动率", m.a);
+    html += metricBox("性能率", m.p);
+    html += metricBox("良率", m.q);
+    html += metricBox("OEE", m.oee, true);
+    html += "</div>";
+
+    html += '<div class="detail-info">';
+    html += diItem("设备编号", d.id);
+    html += diItem("型号", d.model);
+    html += diItem("类型", d.type);
+    html += diItem("状态", '<span class="tag ' + s.tag + '">' + s.label + "</span>");
+    html += diItem("计划/运行", d.planTime + " / " + d.runTime + " 分钟");
+    html += diItem("停机时长", d.stopTime + " 分钟");
+    html += diItem("实际/合格", d.actualOutput + " / " + d.qualifiedOutput + " 件");
+    html += diItem("故障", d.faultCount + " 次 / " + d.faultTime + " 分钟");
+    html += "</div>";
+
+    html += '<div class="sub-title">近 7 天 OEE 走势</div>';
+    html += trendSVG(d.trend);
+
+    html += '<div class="sub-title">今日故障明细</div>';
+    if (!d.faultRecords || d.faultRecords.length === 0) {
+      html += '<div class="empty">无故障记录</div>';
+    } else {
+      html += '<div class="fault-list">';
+      d.faultRecords.forEach(function (f) {
+        html += '<div class="fault-item"><span class="fi-dur">' + f.duration + " 分钟</span>" +
+          '<span class="fi-time">' + f.startTime + " " + f.type + "</span>" +
+          '<span class="fi-desc">' + f.desc + "</span></div>";
+      });
+      html += "</div>";
+    }
+    el.innerHTML = html;
+  }
+
+  function metricBox(label, val, big) {
+    return '<div class="metric-box"><div class="mb-label">' + label + "</div>" +
+      '<div class="mb-value" style="color:' + oeeColor(val) + '">' + pct(val) + "</div></div>";
+  }
+  function diItem(label, val) {
+    return '<div class="di-item">' + label + "<b>" + val + "</b></div>";
+  }
+
+  // 趋势折线 SVG（7 天 OEE）
+  function trendSVG(trend) {
+    var W = 420, H = 180, padL = 32, padR = 12, padT = 18, padB = 26;
+    var n = trend.length;
+    var xStep = (W - padL - padR) / (n - 1);
+    function px(i) { return padL + i * xStep; }
+    function py(v) { return padT + (100 - v) / 100 * (H - padT - padB); }
+    var pts = trend.map(function (v, i) { return px(i) + "," + py(v); }).join(" ");
+    var col = oeeColor(trend[n - 1] / 100);
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">';
+    // 网格线 + Y 轴标签
+    [0, 50, 100].forEach(function (g) {
+      svg += '<line x1="' + padL + '" y1="' + py(g) + '" x2="' + (W - padR) + '" y2="' + py(g) + '" stroke="rgba(255,255,255,.08)"/>';
+      svg += '<text x="' + (padL - 6) + '" y="' + (py(g) + 4) + '" text-anchor="end" fill="' + TH.弱字 + '" font-size="10">' + g + "</text>";
+    });
+    // X 轴标签
+    trend.forEach(function (v, i) {
+      svg += '<text x="' + px(i) + '" y="' + (H - padB + 16) + '" text-anchor="middle" fill="' + TH.弱字 + '" font-size="10">D' + (i + 1) + "</text>";
+    });
+    // 折线 + 填充
+    svg += '<polygon points="' + padL + "," + (H - padB) + " " + pts + " " + px(n - 1) + "," + (H - padB) + '" fill="' + col + '" fill-opacity="0.12"/>';
+    svg += '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2"/>';
+    // 数据点
+    trend.forEach(function (v, i) {
+      svg += '<circle cx="' + px(i) + '" cy="' + py(v) + '" r="3.5" fill="' + oeeColor(v / 100) + '"><title>第' + (i + 1) + "天：" + v + "%</title></circle>";
+    });
+    // 最新值标注
+    svg += '<text x="' + px(n - 1) + '" y="' + (py(trend[n - 1]) - 9) + '" text-anchor="middle" fill="' + col + '" font-size="11" font-weight="bold">' + trend[n - 1] + "%</text>";
+    svg += "</svg>";
+    return svg;
+  }
+
+  // ===== 渲染：OEE 对比横向柱状图 =====
+  function renderBar() {
+    var list = filtered().map(function (d) { return { d: d, m: metrics(d) }; });
+    list.sort(function (a, b) { return b.m.oee - a.m.oee; });
+    var el = document.getElementById("oeeBar");
+    if (list.length === 0) { el.innerHTML = '<div class="empty">无数据</div>'; return; }
+    var W = 500, rowH = 32, labelW = 120, barX = labelW, barMax = W - labelW - 56;
+    var H = list.length * rowH + 8;
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">';
+    list.forEach(function (it, i) {
+      var y = i * rowH + 6;
+      var w = Math.max(it.m.oee * barMax, 1);
+      var col = oeeColor(it.m.oee);
+      var sel = it.d.id === state.selectedId;
+      svg += '<text x="' + (labelW - 8) + '" y="' + (y + 16) + '" text-anchor="end" fill="' + TH.强字 + '" font-size="12">' + it.d.name + "</text>";
+      svg += '<rect x="' + barX + '" y="' + y + '" width="' + barMax + '" height="22" fill="rgba(255,255,255,.05)" rx="3"/>';
+      svg += '<rect class="bar-rect" data-id="' + it.d.id + '" x="' + barX + '" y="' + y + '" width="' + w + '" height="22" fill="' + col + '" rx="3"' + (sel ? ' stroke="#fff" stroke-width="2"' : "") + ">";
+      svg += "<title>" + it.d.name + " | OEE " + pct(it.m.oee) + " | 稼动 " + pct(it.m.a) + " 性能 " + pct(it.m.p) + " 良率 " + pct(it.m.q) + "</title></rect>";
+      svg += '<text x="' + (barX + w + 6) + '" y="' + (y + 16) + '" fill="' + col + '" font-size="12" font-weight="bold">' + pct(it.m.oee) + "</text>";
+    });
+    svg += "</svg>";
+    el.innerHTML = svg;
+  }
+
+  // ===== 渲染：故障类型分布饼图 =====
+  function renderPie() {
+    var map = {};
+    // 按故障时长聚合（排除无故障设备）
+    DATA.devices.forEach(function (d) {
+      if (d.faultTime > 0 && d.faultType && d.faultType !== "无") {
+        map[d.faultType] = (map[d.faultType] || 0) + d.faultTime;
+      }
+    });
+    var arr = Object.keys(map).map(function (k) { return { type: k, time: map[k] }; });
+    arr.sort(function (a, b) { return b.time - a.time; });
+    var total = arr.reduce(function (s, x) { return s + x.time; }, 0);
+    var el = document.getElementById("faultPie");
+    if (total === 0) { el.innerHTML = '<div class="empty">暂无故障数据</div>'; return; }
+
+    var cx = 100, cy = 100, r = 82;
+    var colors = [TH.红, TH.橙, TH.黄, TH.紫, TH.主色, TH.青, TH.弱字, TH.弱字];
+    var angle = -Math.PI / 2;
+    var svg = '<div class="pie-wrap"><svg viewBox="0 0 200 200" width="200" height="200">';
+    arr.forEach(function (it, i) {
+      var slice = it.time / total * Math.PI * 2;
+      var a0 = angle, a1 = angle + slice;
+      var x1 = cx + r * Math.cos(a0), y1 = cy + r * Math.sin(a0);
+      var x2 = cx + r * Math.cos(a1), y2 = cy + r * Math.sin(a1);
+      var large = slice > Math.PI ? 1 : 0;
+      var col = colors[i % colors.length];
+      svg += '<path d="M' + cx + "," + cy + " L" + x1.toFixed(2) + "," + y1.toFixed(2) +
+        " A" + r + "," + r + " 0 " + large + " 1 " + x2.toFixed(2) + "," + y2.toFixed(2) + ' Z" fill="' + col + '" stroke="' + TH.页面底 + '" stroke-width="2"><title>' +
+        it.type + "：" + it.time + " 分钟（" + (it.time / total * 100).toFixed(1) + "%）</title></path>";
+      angle = a1;
+    });
+    // 中心环：总时长
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="42" fill="' + TH.面板底 + '"/>';
+    svg += '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" fill="' + TH.辅字 + '" font-size="11">故障时长</text>';
+    svg += '<text x="' + cx + '" y="' + (cy + 16) + '" text-anchor="middle" fill="' + TH.红 + '" font-size="18" font-weight="bold">' + total + "</text>";
+    svg += "</svg>";
+
+    // 图例
+    var legend = '<div class="pie-legend">';
+    arr.forEach(function (it, i) {
+      legend += '<div class="legend-item"><span class="legend-dot" style="background:' + colors[i % colors.length] + '"></span>' +
+        it.type + "<b>" + it.time + " 分</b></div>";
+    });
+    legend += "</div>";
+    el.innerHTML = svg + legend + "</div>";
+  }
+
+  // ===== 渲染：明细表（可排序） =====
+  function renderTable() {
+    var list = filtered().map(function (d) { return { d: d, m: metrics(d) }; });
+    list.sort(function (a, b) {
+      var va, vb;
+      switch (state.sortKey) {
+        case "name": return state.sortDir === "asc" ? a.d.name.localeCompare(b.d.name, "zh") : b.d.name.localeCompare(a.d.name, "zh");
+        case "workshop": return state.sortDir === "asc" ? (a.d.workshop || "未分配").localeCompare(b.d.workshop || "未分配", "zh") : (b.d.workshop || "未分配").localeCompare(a.d.workshop || "未分配", "zh");
+        case "type": return state.sortDir === "asc" ? a.d.type.localeCompare(b.d.type, "zh") : b.d.type.localeCompare(a.d.type, "zh");
+        case "status": va = a.d.status; vb = b.d.status; break;
+        case "a": va = a.m.a; vb = b.m.a; break;
+        case "p": va = a.m.p; vb = b.m.p; break;
+        case "q": va = a.m.q; vb = b.m.q; break;
+        case "oee": va = a.m.oee; vb = b.m.oee; break;
+        case "output": va = a.d.actualOutput; vb = b.d.actualOutput; break;
+        case "fault": va = a.d.faultTime; vb = b.d.faultTime; break;
+        default: va = 0; vb = 0;
+      }
+      if (typeof va === "string") {
+        return state.sortDir === "asc" ? va.localeCompare(vb, "zh") : vb.localeCompare(va, "zh");
+      }
+      return state.sortDir === "asc" ? va - vb : vb - va;
+    });
+
+    var cols = [
+      { key: "name", label: "设备名称" },
+      { key: "workshop", label: "小部门" },
+      { key: "type", label: "类型" },
+      { key: "status", label: "状态" },
+      { key: "a", label: "稼动率" },
+      { key: "p", label: "性能率" },
+      { key: "q", label: "良率" },
+      { key: "oee", label: "OEE" },
+      { key: "output", label: "实际产量" },
+      { key: "fault", label: "故障时长" }
+    ];
+    var head = "<thead><tr>" + cols.map(function (c) {
+      var arrow = state.sortKey === c.key ? '<span class="sort-arrow">' + (state.sortDir === "asc" ? "▲" : "▼") + "</span>" : "";
+      return '<th data-key="' + c.key + '">' + c.label + arrow + "</th>";
+    }).join("") + "</tr></thead>";
+
+    var body = "<tbody>" + list.map(function (it) {
+      var s = STATUS[it.d.status];
+      return '<tr data-id="' + it.d.id + '"' + (it.d.id === state.selectedId ? ' class="selected"' : "") + ">" +
+        "<td>" + it.d.name + "</td>" +
+        "<td>" + (it.d.workshop || "未分配") + "</td>" +
+        "<td>" + it.d.type + "</td>" +
+        '<td><span class="tag ' + s.tag + '">' + s.label + "</span></td>" +
+        '<td style="color:' + oeeColor(it.m.a) + '">' + pct(it.m.a) + "</td>" +
+        '<td style="color:' + oeeColor(it.m.p) + '">' + pct(it.m.p) + "</td>" +
+        '<td style="color:' + oeeColor(it.m.q) + '">' + pct(it.m.q) + "</td>" +
+        '<td style="color:' + oeeColor(it.m.oee) + ';font-weight:700">' + pct(it.m.oee) + "</td>" +
+        "<td>" + it.d.actualOutput + " / " + it.d.theoryOutput + "</td>" +
+        "<td>" + it.d.faultCount + "次 / " + it.d.faultTime + "分</td>" +
+        "</tr>";
+    }).join("") + "</tbody>";
+
+    document.getElementById("deviceTable").innerHTML = head + body;
+  }
+
+  // ===== 全量渲染 =====
+  function renderAll() {
+    renderKPI();
+    renderFilters();
+    renderGrid();
+    renderDetail();
+    renderBar();
+    renderPie();
+    renderTable();
+  }
+
+  // ===== 事件绑定（事件委托） =====
+  // 顶部 KPI：点击"运行设备"卡片筛选运行中
+  document.getElementById("kpiRow").addEventListener("click", function (e) {
+    var card = e.target.closest(".kpi-card.clickable");
+    if (!card) return;
+    state.filterStatus = card.dataset.filter || "all";
+    renderAll();
+  });
+
+  // 筛选栏：状态按钮
+  document.getElementById("filterBar").addEventListener("click", function (e) {
+    var btn = e.target.closest(".filter-btn");
+    if (btn) {
+      state.filterStatus = btn.dataset.status;
+      renderAll();
+      return;
+    }
+  });
+  // 筛选栏：类型下拉
+  document.getElementById("filterBar").addEventListener("change", function (e) {
+    if (e.target.id === "typeSelect") {
+      state.filterType = e.target.value;
+      renderAll();
+    } else if (e.target.id === "workshopSelect") {
+      state.filterWorkshop = e.target.value;
+      renderAll();
+    }
+  });
+
+  // 设备网格：点击选中
+  document.getElementById("deviceGrid").addEventListener("click", function (e) {
+    var card = e.target.closest(".device-card");
+    if (card) selectDevice(card.dataset.id);
+  });
+
+  // OEE 柱状图：点击选中 + 悬停 tooltip
+  (function () {
+    var bar = document.getElementById("oeeBar");
+    bar.addEventListener("click", function (e) {
+      var r = e.target.closest(".bar-rect");
+      if (r) selectDevice(r.dataset.id);
+    });
+    bar.addEventListener("mousemove", function (e) {
+      var r = e.target.closest(".bar-rect");
+      if (r) {
+        var d = DATA.devices.filter(function (x) { return x.id === r.dataset.id; })[0];
+        var m = metrics(d);
+        showTip("<b>" + d.name + "</b>（" + d.model + "）<br>" +
+          "OEE：<b>" + pct(m.oee) + "</b><br>" +
+          "稼动率 " + pct(m.a) + " · 性能率 " + pct(m.p) + "<br>" +
+          "良率 " + pct(m.q) + "<br>" +
+          "产量 " + d.actualOutput + " 件 · 故障 " + d.faultCount + "次", e);
+      } else { hideTip(); }
+    });
+    bar.addEventListener("mouseleave", hideTip);
+  })();
+
+  // 明细表：表头排序 + 行选中
+  (function () {
+    var tbl = document.getElementById("deviceTable");
+    tbl.addEventListener("click", function (e) {
+      var th = e.target.closest("th");
+      if (th) {
+        var key = th.dataset.key;
+        if (state.sortKey === key) {
+          state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+        } else {
+          state.sortKey = key;
+          state.sortDir = "desc";
+        }
+        renderTable();
+        return;
+      }
+      var tr = e.target.closest("tr[data-id]");
+      if (tr) selectDevice(tr.dataset.id);
+    });
+  })();
+
+  // ===== 编辑器模块：数据编辑 / 新增删除 / 车间信息 / 导入导出 / 自动暂存 =====
+  // 原始数据深拷贝快照（重置用）
+  var ORIG_DATA = JSON.parse(JSON.stringify(DATA));
+  var LS_KEY = "board-data-cache";
+
+  // localStorage 安全封装：file:// 下可能被浏览器禁用，try-catch 降级，不报错
+  var LS_OK = (function () {
+    try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; }
+    catch (e) { return false; }
+  })();
+  function lsGet() { try { return LS_OK ? localStorage.getItem(LS_KEY) : null; } catch (e) { return null; } }
+  function lsSet(v) { try { if (LS_OK) localStorage.setItem(LS_KEY, v); } catch (e) {} }
+  function lsDel() { try { if (LS_OK) localStorage.removeItem(LS_KEY); } catch (e) {} }
+
+  // 当前时间格式化（更新时间 / 暂存时间）
+  function fmtNow() {
+    var d = new Date();
+    function p(n) { return n < 10 ? "0" + n : n; }
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+  // 导出文件名时间戳：YYYYMMDD-HHmm
+  function fileStamp() {
+    var d = new Date();
+    function p(n) { return n < 10 ? "0" + n : n; }
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  // 数据变更统一入口：更新时间 + 渲染 + 自动暂存
+  function dataChanged() {
+    DATA.meta.updateTime = fmtNow();
+    renderTopMeta();
+    renderAll();
+    cacheSave();
+  }
+  // 暂存当前 DATA（带时间戳）
+  function cacheSave() {
+    lsSet(JSON.stringify({ data: DATA, time: fmtNow() }));
+  }
+
+  // ===== 通用模态框 =====
+  var modalMask = document.getElementById("modalMask");
+  var modalBody = document.getElementById("modalBody");
+  var modalTitle = document.getElementById("modalTitle");
+  var modalSave = document.getElementById("modalSave");
+  var modalCancel = document.getElementById("modalCancel");
+  var modalClose = document.getElementById("modalClose");
+  var saveHandler = null; // 每次 openModal 设置保存回调
+
+  function openModal(title, bodyHTML, onSave) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = bodyHTML;
+    saveHandler = onSave;
+    modalMask.classList.add("open");
+  }
+  function closeModal() {
+    modalMask.classList.remove("open");
+    modalBody.innerHTML = "";
+    saveHandler = null;
+  }
+  modalClose.addEventListener("click", closeModal);
+  modalCancel.addEventListener("click", closeModal);
+  modalMask.addEventListener("click", function (e) { if (e.target === modalMask) closeModal(); });
+  modalSave.addEventListener("click", function () { if (saveHandler) saveHandler(); });
+
+  // ===== 表单工具函数 =====
+  function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+  function num(id) { var v = val(id); return v === "" ? 0 : Number(v); }
+  // HTML 转义（防止值里含引号/尖括号破坏表单）
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function numFG(label, id, v) {
+    return '<div class="fg"><label>' + label + '</label><input id="' + id + '" type="number" min="0" value="' + v + '"></div>';
+  }
+
+  // 设备类型 / 状态选项
+  var TYPE_OPTS = ["车削类", "铣削类", "磨削类", "孔加工类", "其他"];
+  var STATUS_OPTS = [
+    { key: "running", label: "运行" },
+    { key: "idle", label: "待机" },
+    { key: "fault", label: "故障" },
+    { key: "maintenance", label: "维护" }
+  ];
+
+  // ===== 设备编辑（id 为 null 表示新增） =====
+  var editingId = null;
+
+  function openDeviceEdit(id) {
+    editingId = id;
+    var d = id ? DATA.devices.filter(function (x) { return x.id === id; })[0] : null;
+    var isNew = !d;
+    if (isNew) {
+      d = {
+        id: genId(), name: "", model: "", type: TYPE_OPTS[0], status: "running",
+        factory: DATA.meta.factory, workshop: "",
+        planTime: 480, runTime: 0, stopTime: 0,
+        theoryOutput: 0, actualOutput: 0, qualifiedOutput: 0,
+        faultType: "无", faultCount: 0, faultTime: 0,
+        trend: [0, 0, 0, 0, 0, 0, 0], faultRecords: []
+      };
+    }
+
+    var typeOpts = TYPE_OPTS.map(function (t) {
+      return '<option value="' + t + '"' + (d.type === t ? " selected" : "") + ">" + t + "</option>";
+    }).join("");
+    var statusOpts = STATUS_OPTS.map(function (s) {
+      return '<option value="' + s.key + '"' + (d.status === s.key ? " selected" : "") + ">" + s.label + "</option>";
+    }).join("");
+
+    // 小部门下拉：现有集合 ∪ 当前值 ∪ "未分配"，再加"＋新增"入口，避免自由文本拼错导致筛选分裂
+    var wsSet = {};
+    ["未分配"].concat(workshops()).concat(d.workshop ? [d.workshop] : []).forEach(function (w) { wsSet[w] = 1; });
+    var wsList = Object.keys(wsSet).sort(function (a, b) { return a.localeCompare(b, "zh"); });
+    var wsOpts = wsList.map(function (w) {
+      return '<option value="' + esc(w) + '"' + ((d.workshop || "未分配") === w ? " selected" : "") + ">" + esc(w) + "</option>";
+    }).join("");
+
+    // 故障明细行（至少留一行空模板方便录入）
+    var faultRows = (d.faultRecords && d.faultRecords.length ? d.faultRecords : [{}])
+      .map(function (f) { return faultRowHTML(f); }).join("");
+
+    // 趋势 7 格
+    var trendArr = d.trend && d.trend.length === 7 ? d.trend : [0, 0, 0, 0, 0, 0, 0];
+    var trendCells = trendArr.map(function (v, i) {
+      return '<div class="fg"><label>D' + (i + 1) + '</label><input class="trend-input" data-i="' + i + '" type="number" min="0" max="100" value="' + v + '"></div>';
+    }).join("");
+
+    var body =
+      '<div class="form-section"><div class="form-section-title">基本信息</div>' +
+      '<div class="form-grid cols-3">' +
+      '<div class="fg"><label>设备编号</label><input id="f_id" value="' + esc(d.id) + '"' + (id ? " disabled" : "") + "></div>" +
+      '<div class="fg"><label>设备名称</label><input id="f_name" value="' + esc(d.name) + '"></div>' +
+      '<div class="fg"><label>型号</label><input id="f_model" value="' + esc(d.model) + '"></div>' +
+      '<div class="fg"><label>类型</label><select id="f_type">' + typeOpts + "</select></div>" +
+      '<div class="fg"><label>状态</label><select id="f_status">' + statusOpts + "</select></div>" +
+      '<div class="fg"><label>小部门</label><select id="f_workshop">' + wsOpts + '<option value="__new__">＋ 新增小部门...</option></select></div>' +
+      "</div></div>" +
+
+      '<div class="form-section"><div class="form-section-title">时间与产量（分钟 / 件）</div>' +
+      '<div class="form-grid cols-3">' +
+      numFG("计划时间", "f_planTime", d.planTime) +
+      numFG("运行时间", "f_runTime", d.runTime) +
+      numFG("停机时间", "f_stopTime", d.stopTime) +
+      numFG("理论产量", "f_theoryOutput", d.theoryOutput) +
+      numFG("实际产量", "f_actualOutput", d.actualOutput) +
+      numFG("合格产量", "f_qualifiedOutput", d.qualifiedOutput) +
+      "</div></div>" +
+
+      '<div class="form-section"><div class="form-section-title">故障信息</div>' +
+      '<div class="form-grid cols-3">' +
+      '<div class="fg"><label>主要故障类型</label><input id="f_faultType" value="' + esc(d.faultType) + '"></div>' +
+      numFG("故障次数", "f_faultCount", d.faultCount) +
+      numFG("故障总时长(分)", "f_faultTime", d.faultTime) +
+      "</div>" +
+      '<div class="sub-title">今日故障明细</div>' +
+      '<div class="fault-edit-head"><span>开始时间</span><span>故障类型</span><span>时长(分)</span><span>描述</span><span></span></div>' +
+      '<div class="fault-edit-list" id="faultEditList">' + faultRows + "</div>" +
+      '<button class="btn btn-sm" id="addFaultRow">+ 添加故障记录</button>' +
+      "</div>" +
+
+      '<div class="form-section"><div class="form-section-title">近 7 天 OEE 走势（%）</div>' +
+      '<div class="form-grid cols-7">' + trendCells + "</div></div>";
+
+    openModal(isNew ? "新增设备" : "编辑设备 · " + d.name, body, function () { saveDevice(isNew); });
+
+    // 小部门下拉：选"＋新增"时弹窗输入新名，插入并选中；取消则回到原值
+    document.getElementById("f_workshop").addEventListener("change", function () {
+      if (this.value === "__new__") {
+        var nw = prompt("请输入新小部门名称：");
+        if (nw && nw.trim()) {
+          nw = nw.trim();
+          var opt = document.createElement("option");
+          opt.value = nw; opt.textContent = nw;
+          this.insertBefore(opt, this.lastElementChild); // 插在"＋新增"前
+          this.value = nw;
+        } else {
+          this.value = (d.workshop || "未分配"); // 取消则回到原值
+        }
+      }
+    });
+    // 添加故障行
+    document.getElementById("addFaultRow").addEventListener("click", function () {
+      var list = document.getElementById("faultEditList");
+      var wrap = document.createElement("div");
+      wrap.innerHTML = faultRowHTML({});
+      list.appendChild(wrap.firstChild);
+    });
+    // 删除故障行（委托）
+    document.getElementById("faultEditList").addEventListener("click", function (e) {
+      var btn = e.target.closest(".del-row");
+      if (btn) btn.closest(".fault-edit-row").remove();
+    });
+    // 实时预览
+    modalBody.addEventListener("input", updatePreview);
+    updatePreview();
+  }
+
+  // 单行故障明细 HTML
+  function faultRowHTML(f) {
+    f = f || {};
+    return '<div class="fault-edit-row">' +
+      '<input class="fr-time" value="' + esc(f.startTime) + '" placeholder="09:12">' +
+      '<input class="fr-type" value="' + esc(f.type) + '" placeholder="刀具崩刃">' +
+      '<input class="fr-dur" type="number" min="0" value="' + (f.duration || 0) + '">' +
+      '<input class="fr-desc" value="' + esc(f.desc) + '" placeholder="故障描述">' +
+      '<button class="del-row" type="button" title="删除该行">×</button>' +
+      "</div>";
+  }
+
+  // 生成新设备编号：DEV-XX，XX 为现有最大数字 +1
+  function genId() {
+    var max = 0;
+    DATA.devices.forEach(function (d) {
+      var m = d.id.match(/(\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    var n = max + 1;
+    return "DEV-" + (n < 10 ? "0" + n : n);
+  }
+
+  // 实时预览派生指标（稼动率/性能率/良率/OEE）
+  function updatePreview() {
+    var plan = num("f_planTime"), run = num("f_runTime");
+    var theory = num("f_theoryOutput"), actual = num("f_actualOutput"), qual = num("f_qualifiedOutput");
+    var a = plan > 0 ? run / plan : 0;
+    var p = theory > 0 ? actual / theory : 0;
+    var q = actual > 0 ? qual / actual : 0;
+    var oee = a * p * q;
+    document.getElementById("previewMetrics").innerHTML =
+      pmItem("稼动率", a) + pmItem("性能率", p) + pmItem("良率", q) + pmItem("OEE", oee);
+  }
+  function pmItem(label, v) {
+    return '<span class="pm" style="color:' + oeeColor(v) + '">' + label + "<b>" + pct(v) + "</b></span>";
+  }
+
+  // 保存设备：校验 -> 写回 DATA -> 关闭 -> 刷新
+  function saveDevice(isNew) {
+    var id = val("f_id");
+    var name = val("f_name");
+    if (!id) { alert("请填写设备编号"); return; }
+    if (!name) { alert("请填写设备名称"); return; }
+    if (isNew && DATA.devices.some(function (x) { return x.id === id; })) {
+      alert("设备编号已存在：" + id); return;
+    }
+    var plan = num("f_planTime"), run = num("f_runTime");
+    var actual = num("f_actualOutput"), qual = num("f_qualifiedOutput");
+    if (run > plan) { alert("运行时间(" + run + ")不能大于计划时间(" + plan + ")"); return; }
+    if (qual > actual) { alert("合格产量(" + qual + ")不能大于实际产量(" + actual + ")"); return; }
+
+    // 读故障明细（跳过全空行）
+    var faultRecords = [];
+    Array.prototype.forEach.call(document.querySelectorAll("#faultEditList .fault-edit-row"), function (row) {
+      var time = row.querySelector(".fr-time").value.trim();
+      var type = row.querySelector(".fr-type").value.trim();
+      var dur = Number(row.querySelector(".fr-dur").value) || 0;
+      var desc = row.querySelector(".fr-desc").value.trim();
+      if (time || type || desc) faultRecords.push({ startTime: time, type: type, duration: dur, desc: desc });
+    });
+
+    // 读趋势 7 天
+    var trend = [];
+    Array.prototype.forEach.call(document.querySelectorAll(".trend-input"), function (inp) {
+      trend.push(Math.max(0, Math.min(100, Number(inp.value) || 0)));
+    });
+
+    var workshopVal = val("f_workshop");
+    var workshop = (workshopVal === "__new__" ? "未分配" : workshopVal) || "未分配";
+    var d = {
+      id: id, name: name, model: val("f_model"), type: val("f_type"), status: val("f_status"),
+      factory: DATA.meta.factory, workshop: workshop, // 总车间统一用车间信息 Sheet，不在设备级维护
+      planTime: plan, runTime: run, stopTime: num("f_stopTime"),
+      theoryOutput: num("f_theoryOutput"), actualOutput: actual, qualifiedOutput: qual,
+      faultType: val("f_faultType") || "无", faultCount: num("f_faultCount"), faultTime: num("f_faultTime"),
+      trend: trend, faultRecords: faultRecords
+    };
+
+    if (isNew) {
+      DATA.devices.push(d);
+    } else {
+      var idx = DATA.devices.findIndex(function (x) { return x.id === editingId; });
+      if (idx >= 0) DATA.devices[idx] = d;
+    }
+    state.selectedId = d.id;
+    closeModal();
+    dataChanged();
+  }
+
+  // 删除设备
+  function delDevice(id) {
+    if (!confirm("确定删除设备 " + id + "？此操作不可撤销。")) return;
+    DATA.devices = DATA.devices.filter(function (x) { return x.id !== id; });
+    if (state.selectedId === id) {
+      state.selectedId = DATA.devices.length ? DATA.devices[0].id : null;
+    }
+    dataChanged();
+  }
+
+  // ===== 车间信息编辑 =====
+  function openMetaEdit() {
+    var m = DATA.meta;
+    var body =
+      '<div class="form-section"><div class="form-section-title">车间基本信息</div>' +
+      '<div class="form-grid">' +
+      '<div class="fg"><label>车间名称</label><input id="m_factory" value="' + esc(m.factory) + '"></div>' +
+      '<div class="fg"><label>日期</label><input id="m_date" value="' + esc(m.date) + '"></div>' +
+      '<div class="fg"><label>班次</label><input id="m_shift" value="' + esc(m.shift) + '"></div>' +
+      '<div class="fg"><label>更新时间（留空自动取当前）</label><input id="m_updateTime" value="' + esc(m.updateTime) + '"></div>' +
+      "</div></div>";
+    openModal("编辑车间信息", body, function () {
+      DATA.meta.factory = val("m_factory") || DATA.meta.factory;
+      DATA.meta.date = val("m_date") || DATA.meta.date;
+      DATA.meta.shift = val("m_shift") || DATA.meta.shift;
+      DATA.meta.updateTime = val("m_updateTime") || fmtNow();
+      closeModal();
+      dataChanged();
+    });
+  }
+
+  // ===== 导入 / 导出 =====
+  function exportJS() {
+    var text = "/* 注塑设备运行效率看板 - 数据文件\n   导出时间：" + fmtNow() +
+      "\n   用法：下载后替换原 注塑设备-看板数据.js 即可，看板自动加载新数据\n*/\nwindow.BOARD_DATA = " +
+      JSON.stringify(DATA, null, 2) + ";\n";
+    downloadFile("注塑设备-看板数据-" + fileStamp() + ".js", text, "text/javascript;charset=utf-8");
+    lsDel(); // 已落盘，清除浏览器暂存
+  }
+  function exportJSON() {
+    downloadFile("注塑设备-看板数据-" + fileStamp() + ".json", JSON.stringify(DATA, null, 2), "application/json;charset=utf-8");
+  }
+  // 导出为 Excel：5 个 Sheet（台账与运行数据分离），结构与导入模板一致
+  function exportXLSX() {
+    if (typeof XLSX === "undefined") { alert("Excel 库未加载，无法导出"); return; }
+    var wb = XLSX.utils.book_new();
+
+    // Sheet1 车间信息（键值对）
+    var metaAOA = [
+      ["字段", "值"],
+      ["总车间名称", DATA.meta.factory],
+      ["日期", DATA.meta.date],
+      ["班次", DATA.meta.shift],
+      ["更新时间", DATA.meta.updateTime]
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(metaAOA), "车间信息");
+
+    // Sheet2 设备台账（基础信息 + 车间归属）
+    var bookHead = ["设备编号", "设备名称", "型号", "类型", "小部门"];
+    var bookAOA = [bookHead];
+    DATA.devices.forEach(function (d) {
+      bookAOA.push([d.id, d.name, d.model, d.type, d.workshop || "未分配"]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bookAOA), "设备台账");
+
+    // Sheet3 运行数据（每台设备当天的运行数据）
+    var runHead = ["设备编号", "状态", "计划时间(分)", "运行时间(分)", "停机时间(分)",
+      "理论产量(件)", "实际产量(件)", "合格产量(件)",
+      "主要故障类型", "故障次数", "故障总时长(分)"];
+    var runAOA = [runHead];
+    DATA.devices.forEach(function (d) {
+      runAOA.push([d.id, d.status, d.planTime, d.runTime, d.stopTime,
+        d.theoryOutput, d.actualOutput, d.qualifiedOutput,
+        d.faultType, d.faultCount, d.faultTime]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(runAOA), "运行数据");
+
+    // Sheet4 故障明细（每行一条故障，带设备编号）
+    var faultAOA = [["设备编号", "开始时间", "故障类型", "时长(分)", "故障描述"]];
+    DATA.devices.forEach(function (d) {
+      (d.faultRecords || []).forEach(function (f) {
+        faultAOA.push([d.id, f.startTime, f.type, f.duration, f.desc]);
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(faultAOA), "故障明细");
+
+    // Sheet5 7天趋势（每行一台设备 D1~D7）
+    var trendAOA = [["设备编号", "D1", "D2", "D3", "D4", "D5", "D6", "D7"]];
+    DATA.devices.forEach(function (d) {
+      var t = d.trend && d.trend.length === 7 ? d.trend : [0, 0, 0, 0, 0, 0, 0];
+      trendAOA.push([d.id, t[0], t[1], t[2], t[3], t[4], t[5], t[6]]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(trendAOA), "7天趋势");
+
+    XLSX.writeFile(wb, "注塑设备-看板数据-" + fileStamp() + ".xlsx");
+  }
+  function downloadFile(name, content, mime) {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 200);
+  }
+
+  // 单元格取数：空值 / 非数字统一转 0
+  function cellNum(v) {
+    if (v === null || v === undefined || v === "") return 0;
+    var n = Number(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // 带校验的取数：空值转 0；非数字转 0 并往 warns 收集提示（不阻断导入，定位用）
+  function cellNumCheck(v, label, warns) {
+    if (v === null || v === undefined || v === "") return 0;
+    var n = Number(v);
+    if (isNaN(n)) {
+      if (warns) warns.push("「" + label + "」值非法已按 0 处理：" + v);
+      return 0;
+    }
+    return n;
+  }
+
+  // 导入：按后缀分流 —— .xlsx 走 SheetJS，.js / .json 走文本解析
+  function handleImport(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var name = file.name;
+
+    // ===== Excel 分支：SheetJS 解析 =====
+    if (/\.xlsx$/i.test(name)) {
+      if (typeof XLSX === "undefined") {
+        alert("Excel 解析库未加载，请确认 xlsx.full.min.js 与本 HTML 在同一目录");
+        e.target.value = "";
+        return;
+      }
+      var xReader = new FileReader();
+      xReader.onload = function () {
+        try {
+          var wb = XLSX.read(new Uint8Array(xReader.result), { type: "array" });
+          applyImported(parseExcel(wb));
+        } catch (err) {
+          alert("导入失败：" + err.message);
+        }
+        e.target.value = "";
+      };
+      xReader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // ===== .js / .json 分支：文本解析 =====
+    var reader = new FileReader();
+    reader.onload = function () {
+      var text = reader.result;
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // 去 BOM
+      var parsed = null;
+      try {
+        if (/\.json$/i.test(name)) {
+          parsed = JSON.parse(text);
+        } else {
+          var m = text.match(/window\.BOARD_DATA\s*=\s*(\{[\s\S]*?\});\s*$/);
+          if (!m) throw new Error("文件内未找到 window.BOARD_DATA 赋值");
+          parsed = (new Function("return (" + m[1] + ")"))();
+        }
+        if (!parsed || !Array.isArray(parsed.devices) || parsed.devices.length === 0) {
+          throw new Error("数据结构不符：缺少非空 devices 数组");
+        }
+        parsed.devices.forEach(function (d, i) {
+          if (!d.id || !d.name) throw new Error("第 " + (i + 1) + " 台设备缺少 id 或 name");
+        });
+      } catch (err) {
+        alert("导入失败：" + err.message);
+        e.target.value = "";
+        return;
+      }
+      applyImported(parsed);
+      e.target.value = ""; // 重置，便于重复导入同名文件
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  // Excel 解析：5 个 Sheet（台账与运行数据分离）组装成 { meta, devices, warns }
+  // 致命错误（缺 Sheet/列）立即抛；行级错误收集到 errs 末尾聚合抛出；非阻断提示进 warns
+  function parseExcel(wb) {
+    var errs = [];   // 阻断性行级错误，解析末尾聚合抛出
+    var warns = [];  // 非阻断提示（孤儿记录/台账未出数据），导入成功后展示
+
+    // --- Sheet1 车间信息：键值对，跳过表头行 ---
+    var metaRaw = {};
+    var wsMeta = wb.Sheets["车间信息"];
+    if (wsMeta) {
+      var mRows = XLSX.utils.sheet_to_json(wsMeta, { header: 1 });
+      for (var i = 1; i < mRows.length; i++) {
+        if (mRows[i] && mRows[i][0]) metaRaw[String(mRows[i][0]).trim()] = String(mRows[i][1] || "");
+      }
+    }
+    var metaOut = {
+      factory: metaRaw["总车间名称"] || metaRaw["车间名称"] || "未命名车间",
+      date: metaRaw["日期"] || "",
+      shift: metaRaw["班次"] || "",
+      updateTime: metaRaw["更新时间"] || fmtNow(),
+      unit: { time: "分钟", output: "件" }
+    };
+
+    // --- Sheet2 设备台账：基础信息 + 车间归属，建字典 ---
+    var wsBook = wb.Sheets["设备台账"];
+    if (!wsBook) throw new Error("缺少「设备台账」Sheet");
+    var bRows = XLSX.utils.sheet_to_json(wsBook, { header: 1 });
+    if (bRows.length < 2) throw new Error("设备台账无数据行");
+    var bCol = {};
+    bRows[0].forEach(function (h, i) { bCol[String(h).trim()] = i; });
+    var B_REQUIRED = ["设备编号", "设备名称", "型号", "类型", "小部门"];
+    var bMissing = B_REQUIRED.filter(function (c) { return !(c in bCol); });
+    if (bMissing.length) throw new Error("设备台账缺少列：" + bMissing.join("、") + "（现有列：" + Object.keys(bCol).join("、") + "）");
+    var VALID_TYPE = TYPE_OPTS; // 复用顶层定义，避免两处维护
+    var book = {}; // 设备编号 -> 台账基础信息
+    for (var bi = 1; bi < bRows.length; bi++) {
+      var brow = bRows[bi];
+      if (!brow || !brow[bCol["设备编号"]]) continue;
+      var bid = String(brow[bCol["设备编号"]]).trim();
+      if (book[bid]) { errs.push("设备台账第 " + (bi + 1) + " 行编号重复：" + bid + "（已忽略该行）"); continue; }
+      var btype = String(brow[bCol["类型"]] || "").trim();
+      if (btype && VALID_TYPE.indexOf(btype) < 0) {
+        errs.push("设备台账第 " + (bi + 1) + " 行类型非法：" + btype + "（限：" + VALID_TYPE.join("/") + "）");
+        continue;
+      }
+      if (!String(brow[bCol["设备名称"]] || "").trim()) {
+        errs.push("设备台账第 " + (bi + 1) + " 行缺设备名称");
+        continue;
+      }
+      book[bid] = {
+        name: String(brow[bCol["设备名称"]]).trim(),
+        model: String(brow[bCol["型号"]] || "").trim(),
+        type: btype,
+        factory: metaOut.factory, // 总车间统一取车间信息 Sheet，台账不存（方案A 去冗余）
+        workshop: String(brow[bCol["小部门"]] || "未分配").trim()
+      };
+    }
+
+    // --- Sheet3 运行数据：每条关联台账组装设备对象 ---
+    var wsRun = wb.Sheets["运行数据"];
+    if (!wsRun) throw new Error("缺少「运行数据」Sheet");
+    var rRows = XLSX.utils.sheet_to_json(wsRun, { header: 1 });
+    if (rRows.length < 2) throw new Error("运行数据无数据行");
+    var rCol = {};
+    rRows[0].forEach(function (h, i) { rCol[String(h).trim()] = i; });
+    var R_REQUIRED = ["设备编号", "状态", "计划时间(分)", "运行时间(分)", "停机时间(分)",
+      "理论产量(件)", "实际产量(件)", "合格产量(件)",
+      "主要故障类型", "故障次数", "故障总时长(分)"];
+    var rMissing = R_REQUIRED.filter(function (c) { return !(c in rCol); });
+    if (rMissing.length) throw new Error("运行数据缺少列：" + rMissing.join("、") + "（现有列：" + Object.keys(rCol).join("、") + "）");
+    var VALID_STATUS = STATUS_OPTS.map(function (s) { return s.key; }); // 复用顶层定义
+    var devices = [];
+    var devMap = {};
+    for (var ri = 1; ri < rRows.length; ri++) {
+      var row = rRows[ri];
+      if (!row || !row[rCol["设备编号"]]) continue;
+      var id = String(row[rCol["设备编号"]]).trim();
+      var info = book[id];
+      if (!info) { errs.push("运行数据第 " + (ri + 1) + " 行设备 " + id + " 不在台账，请先在「设备台账」补录"); continue; }
+      if (devMap[id]) { errs.push("运行数据第 " + (ri + 1) + " 行设备编号重复：" + id + "（每台设备仅允许一行运行数据）"); continue; }
+      var status = String(row[rCol["状态"]] || "").trim();
+      if (VALID_STATUS.indexOf(status) < 0) {
+        errs.push("运行数据第 " + (ri + 1) + " 行状态非法：" + status + "（限：" + VALID_STATUS.join("/") + "）");
+        continue;
+      }
+      var planTime = cellNumCheck(row[rCol["计划时间(分)"]], "运行数据第 " + (ri + 1) + " 行 计划时间", warns);
+      var runTime = cellNumCheck(row[rCol["运行时间(分)"]], "运行数据第 " + (ri + 1) + " 行 运行时间", warns);
+      var actualOutput = cellNumCheck(row[rCol["实际产量(件)"]], "运行数据第 " + (ri + 1) + " 行 实际产量", warns);
+      var qualifiedOutput = cellNumCheck(row[rCol["合格产量(件)"]], "运行数据第 " + (ri + 1) + " 行 合格产量", warns);
+      if (runTime > planTime) { errs.push("运行数据第 " + (ri + 1) + " 行运行时间(" + runTime + ")大于计划时间(" + planTime + ")"); continue; }
+      if (qualifiedOutput > actualOutput) { errs.push("运行数据第 " + (ri + 1) + " 行合格产量(" + qualifiedOutput + ")大于实际产量(" + actualOutput + ")"); continue; }
+      var dev = {
+        id: id,
+        name: info.name,
+        model: info.model,
+        type: info.type,
+        factory: info.factory,
+        workshop: info.workshop,
+        status: status,
+        planTime: planTime,
+        runTime: runTime,
+        stopTime: cellNumCheck(row[rCol["停机时间(分)"]], "运行数据第 " + (ri + 1) + " 行 停机时间", warns),
+        theoryOutput: cellNumCheck(row[rCol["理论产量(件)"]], "运行数据第 " + (ri + 1) + " 行 理论产量", warns),
+        actualOutput: actualOutput,
+        qualifiedOutput: qualifiedOutput,
+        faultType: String(row[rCol["主要故障类型"]] || "无").trim(),
+        faultCount: cellNumCheck(row[rCol["故障次数"]], "运行数据第 " + (ri + 1) + " 行 故障次数", warns),
+        faultTime: cellNumCheck(row[rCol["故障总时长(分)"]], "运行数据第 " + (ri + 1) + " 行 故障总时长", warns),
+        trend: [0, 0, 0, 0, 0, 0, 0],
+        faultRecords: []
+      };
+      devices.push(dev);
+      devMap[id] = dev;
+    }
+
+    // 台账有、运行数据无的设备 -> 警告（不阻断，告知用户未显示）
+    Object.keys(book).forEach(function (bid) {
+      if (!devMap[bid]) warns.push("台账设备 " + bid + "（" + book[bid].name + "）无运行数据，本次未显示");
+    });
+
+    // 行级错误聚合抛出（一次性列出所有问题，省得改一处再导又报下一处）
+    if (errs.length) throw new Error("导入中止，共 " + errs.length + " 处错误：\n" + errs.join("\n"));
+    if (devices.length === 0) throw new Error("运行数据无有效数据行");
+
+    // --- Sheet4 故障明细：按设备编号挂到 faultRecords ---
+    var wsFault = wb.Sheets["故障明细"];
+    if (wsFault) {
+      var fRows = XLSX.utils.sheet_to_json(wsFault, { header: 1 });
+      var fCol = {};
+      (fRows[0] || []).forEach(function (h, i) { fCol[String(h).trim()] = i; });
+      for (var r2 = 1; r2 < fRows.length; r2++) {
+        var fr = fRows[r2];
+        if (!fr || !fr[fCol["设备编号"]]) continue;
+        var fid = String(fr[fCol["设备编号"]]).trim();
+        if (!devMap[fid]) { warns.push("故障明细第 " + (r2 + 1) + " 行设备 " + fid + " 不存在，已忽略"); continue; }
+        devMap[fid].faultRecords.push({
+          startTime: String(fr[fCol["开始时间"]] || "").trim(),
+          type: String(fr[fCol["故障类型"]] || "").trim(),
+          duration: cellNumCheck(fr[fCol["时长(分)"]], "故障明细第 " + (r2 + 1) + " 行 时长", warns),
+          desc: String(fr[fCol["故障描述"]] || "").trim()
+        });
+      }
+    }
+
+    // --- Sheet5 7天趋势：按设备编号挂 trend（D1~D7） ---
+    var wsTrend = wb.Sheets["7天趋势"];
+    if (wsTrend) {
+      var tRows = XLSX.utils.sheet_to_json(wsTrend, { header: 1 });
+      for (var r3 = 1; r3 < tRows.length; r3++) {
+        var tr = tRows[r3];
+        if (!tr || !tr[0]) continue;
+        var tid = String(tr[0]).trim();
+        if (!devMap[tid]) { warns.push("7天趋势第 " + (r3 + 1) + " 行设备 " + tid + " 不存在，已忽略"); continue; }
+        var trend = [];
+        for (var c = 1; c <= 7; c++) {
+          trend.push(Math.max(0, Math.min(100, cellNumCheck(tr[c], "7天趋势第 " + (r3 + 1) + " 行 D" + c, warns))));
+        }
+        devMap[tid].trend = trend;
+      }
+    }
+
+    return { meta: metaOut, devices: devices, warns: warns };
+  }
+
+  // 应用导入数据并刷新看板（.js / .json / .xlsx 共用）
+  function applyImported(parsed) {
+    // 覆盖前二次确认，防误选文件丢失当前数据
+    if (DATA.devices && DATA.devices.length > 0) {
+      if (!confirm("将覆盖当前 " + DATA.devices.length + " 台数据，是否继续？")) return;
+    }
+    DATA.devices = parsed.devices;
+    if (parsed.meta) {
+      for (var k in parsed.meta) DATA.meta[k] = parsed.meta[k];
+    }
+    state.selectedId = DATA.devices[0].id;
+    closeModal();
+    dataChanged();
+    // 有非阻断提示时一并展示（台账未出数据/孤儿记录等），让用户知道差异
+    var warns = parsed.warns || [];
+    if (warns.length) {
+      alert("导入成功，共 " + DATA.devices.length + " 台设备。\n\n⚠️ " + warns.length + " 项提示：\n" + warns.join("\n"));
+    } else {
+      alert("导入成功，共 " + DATA.devices.length + " 台设备");
+    }
+  }
+
+  // ===== 工具栏事件绑定 =====
+  document.getElementById("btnImport").addEventListener("click", function () {
+    document.getElementById("fileInput").click();
+  });
+  document.getElementById("fileInput").addEventListener("change", handleImport);
+
+  var exportMenu = document.getElementById("exportMenu");
+  document.getElementById("btnExport").addEventListener("click", function (e) {
+    e.stopPropagation();
+    exportMenu.classList.toggle("open");
+  });
+  document.getElementById("expJs").addEventListener("click", function () { exportMenu.classList.remove("open"); exportJS(); });
+  document.getElementById("expJson").addEventListener("click", function () { exportMenu.classList.remove("open"); exportJSON(); });
+  document.getElementById("expXlsx").addEventListener("click", function () { exportMenu.classList.remove("open"); exportXLSX(); });
+  document.addEventListener("click", function () { exportMenu.classList.remove("open"); });
+
+  document.getElementById("btnMeta").addEventListener("click", openMetaEdit);
+  document.getElementById("btnAdd").addEventListener("click", function () { openDeviceEdit(null); });
+  document.getElementById("btnReset").addEventListener("click", function () {
+    if (!confirm("确定重置为原始数据？当前所有改动（含浏览器暂存）将丢失。")) return;
+    DATA.devices = JSON.parse(JSON.stringify(ORIG_DATA.devices));
+    DATA.meta = JSON.parse(JSON.stringify(ORIG_DATA.meta));
+    state.selectedId = DATA.devices[0].id;
+    lsDel();
+    renderTopMeta();
+    renderAll();
+  });
+
+  // 详情面板标题：编辑 / 删除 按钮（事件委托）
+  document.getElementById("detailTitle").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    if (btn.dataset.act === "edit") openDeviceEdit(btn.dataset.id);
+    else if (btn.dataset.act === "del") delDevice(btn.dataset.id);
+  });
+
+  // ===== 启动时检查浏览器暂存（检测到未保存修改则提示恢复） =====
+  (function checkCache() {
+    var raw = lsGet();
+    if (!raw) return;
+    try {
+      var snap = JSON.parse(raw);
+      if (!snap || !snap.data || !snap.data.devices) return;
+      // 与原始数据完全一致则不提示
+      if (JSON.stringify(snap.data.devices) === JSON.stringify(ORIG_DATA.devices) &&
+          JSON.stringify(snap.data.meta) === JSON.stringify(ORIG_DATA.meta)) return;
+      var bar = document.getElementById("restoreBar");
+      document.getElementById("restoreMsg").innerHTML =
+        "检测到未保存的修改（更新于 <b>" + (snap.time || "未知") + "</b>），是否恢复？";
+      bar.classList.add("show");
+      document.getElementById("restoreYes").onclick = function () {
+        DATA.devices = snap.data.devices;
+        DATA.meta = snap.data.meta;
+        state.selectedId = DATA.devices[0].id;
+        bar.classList.remove("show");
+        renderTopMeta();
+        renderAll();
+      };
+      document.getElementById("restoreNo").onclick = function () {
+        lsDel();
+        bar.classList.remove("show");
+      };
+    } catch (e) { /* 暂存损坏，忽略 */ }
+  })();
+
+  // ===== 初始化：默认选中第一台运行中的设备 =====
+  function init() {
+    renderTopMeta();
+    var first = DATA.devices.filter(function (d) { return d.status === "running"; })[0] || DATA.devices[0];
+    state.selectedId = first.id;
+    renderAll();
+  }
+  init();
+  window.renderAll = renderAll; // 暴露给主题切换（IIFE 内函数全局不可见，实测踩坑）
+})();
+</script>
+</body>
+</html>
